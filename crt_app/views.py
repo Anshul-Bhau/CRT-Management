@@ -1,6 +1,7 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from crt_app.services.user_services import UserService
+from crt_app.services.classes_services import ClassServices
 import json
 from crt_app.utils.logger import log_error, log_info
 
@@ -53,6 +54,7 @@ def create_tpo(request):
     except Exception as e:
         return JsonResponse({"error" : str(e)}, status=500)
     
+@csrf_exempt
 def create_interviewer(request):
     if request.method != "POST":
         return JsonResponse({"error" : "Only POST allowed"}, status = 405)
@@ -60,8 +62,23 @@ def create_interviewer(request):
         data = json.loads(request.body)
         interviewer = UserService.create_interviewer(data=data)
         return JsonResponse({
-            "message" : "tpo created",
+            "message" : "interviewer created",
             "id" : str(interviewer.user.id)
         })
     except Exception as e:
         return JsonResponse({"error" : str(e)}, status=500)
+    
+@csrf_exempt
+def create_class(request):
+    if request.method != "POST":
+        return JsonResponse({"error" : "Only POST allowed"}, status = 405)
+    try:
+        data = json.loads(request.body)
+        created_class = ClassServices.create_class(data=data)
+        return JsonResponse({
+            "message" : "interviewer created",
+            "id" : str(created_class.id)
+        })
+    except Exception as e:
+        return JsonResponse({"error" : str(e)}, status=500)
+    

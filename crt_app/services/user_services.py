@@ -8,7 +8,7 @@ class UserService:
     @staticmethod
     def create_instructor(data):
         try:
-            log_info(f"Attempting to create instructor {data['email']}")
+            log_info(f"Attempting to create instructor -> {data['email']}")
             user = Users.objects.create(
                 username = data['name'],
                 email = data['email'],
