@@ -70,7 +70,8 @@ class Classes(models.Model):
     instructor = models.OneToOneField(
         InstructorProfile,
         on_delete=models.SET_NULL,
-        related_name='instructor_profile'
+        related_name='instructor_profile',
+        null=True
     )
 
     class_name = models.CharField(max_length=250 ,null=False, unique=False)

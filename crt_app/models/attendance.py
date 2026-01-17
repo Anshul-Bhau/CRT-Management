@@ -12,7 +12,8 @@ class Attendance(models.Model):
     class_name = models.OneToOneField(
         Classes,
         on_delete=models.SET_NULL,
-        related_name="class"
+        related_name="class",
+        null=True
     )
 
     date  = models.DateField(null=False, blank=False)
