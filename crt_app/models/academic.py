@@ -65,3 +65,23 @@ class StudentProfile(models.Model):
     def __str__(self):
         return self.stu_email
     
+class Classes(models.Model):
+
+    instructor = models.OneToOneField(
+        InstructorProfile,
+        on_delete=models.SET_NULL,
+        related_name='instructor_profile'
+    )
+
+    class_name = models.CharField(max_length=250 ,null=False, unique=False)
+    date = models.DateField()
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    venue = models.CharField(max_length=250)
+
+    # batch_name = models.CharField(max_length=50, null=False)
+    # batch_id = models.IntegerField(null=False)
+
+    def __str__(self):
+        return f"{self.class_name} at {self.date}"
+    

@@ -5,19 +5,17 @@ import json
 
 @csrf_exempt
 def create_instructor(request):
-
     if request.method != "POST":
         return JsonResponse({"error": "Only POST allowed"}, status=405)
 
-    data = json.loads(request.body)
-
-    instructor = UserService.create_instructor(
-        name=data.get("name"),
-        email=data.get("email")
-    )
-
-    return JsonResponse({
-        "message": "Instructor created",
-        "id": str(instructor.id),
-        "name": instructor.full_name
-    })
+    try:
+        data = json.loads(request.body)
+        instructor = UserService.create_instructor(data=data)
+        return JsonResponse({
+            "message": "Instructor created",
+            "id": str(instructor.id),
+            "name": instructor.full_name
+        })
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+    

@@ -6,28 +6,29 @@ from crt_app.utils.logger import log_info, log_error
 class UserService:
 
     @staticmethod
-    def create_instructor(name, email):
+    def create_instructor(data):
         try:
-            log_info(f"Attempting to create instructor {email}")
+            log_info(f"Attempting to create instructor {data['email']}")
             user = Users.objects.create(
-                username = name,
-                email = email,
+                username = data['name'],
+                email = data['email'],
                 role = 'INSTRUCTOR',
                 password = make_password("sober")
             )
 
             instructor = InstructorProfile.objects.create(
                 user = user,
-                full_name= name
+                full_name= data['name']
             )
 
-            log_info(f"Instructor created -> {email}")
+            log_info(f"Instructor created -> {data['email']}")
             return instructor
     
         except Exception as e:
             log_error(f"Instructor creation failed -> {str(e)}")
-            raise
+            raise e
 
+    @staticmethod
     def create_student(data):
         try:
             log_info(f"Attempting to create student -> {data['stu_email']}")
@@ -56,4 +57,8 @@ class UserService:
         
         except Exception as e:
             log_error(f"Student Creation failed -> {str(e)}")
+            raise e
+
+    @staticmethod
+    def create_tpo(data):
 
