@@ -84,3 +84,24 @@ class UserService:
             log_error(f"Tpo creation failed -> {str(e)}")
             raise e
 
+    @staticmethod
+    def create_interviewer(data):
+        try:
+            log_info(f"Attempting to create interviewer -> {data['inter_email']}")
+            user_ = Users.objects.create(
+                    username = data['inter_name'],
+                    email  = data['inter_email'],
+                    role = 'INTERVIEWER',
+                    password = make_password('sober')
+                )
+            interviewer = InterviewerProfile(
+                user = user_,
+                sub = data['sub']
+            )
+            log_info(f"Successfully created interviewer {data['inter_email']}")
+            return interviewer
+        
+        except Exception as e:
+            log_error(f"Interviewer creation failed -> {str(e)}")
+            raise e
+    

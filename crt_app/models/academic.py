@@ -1,5 +1,6 @@
 from django.db import models
 from .user import Users
+from django.core.exceptions import ValidationError
 
 class InstructorProfile(models.Model):
 
@@ -65,6 +66,22 @@ class StudentProfile(models.Model):
     def __str__(self):
         return self.stu_email
     
+class InterviewerProfile(models.Model):
+    SUBJECT_CHOICES = [ ('TECH', 'TECH'),
+                        ('HR', 'HR'),
+                        ('GD_EXTEMPORE', 'GD_EXTEMPORE')]
+    user = models.OneToOneField(
+        Users,
+        on_delete=models.CASCADE,
+        related_name='interviewer_profile'
+    )
+    sub = models.CharField(max_length=50, null=False, choices=SUBJECT_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.email}"
+
+    
 class Classes(models.Model):
 
     instructor = models.OneToOneField(
@@ -82,6 +99,10 @@ class Classes(models.Model):
 
     # batch_name = models.CharField(max_length=50, null=False)
     # batch_id = models.IntegerField(null=False)
+
+    def check_date(self):
+        if self.end_date < self.start_date:
+            raise ValidationError("End date must be after start date")
 
     def __str__(self):
         return f"{self.class_name} at {self.date}"

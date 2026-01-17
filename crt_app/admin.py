@@ -16,4 +16,5 @@ class UserAdmin(admin.ModelAdmin):
 admin.site.register(StudentProfile)
 admin.site.register(InstructorProfile)
 admin.site.register(TPOProfile)
+admin.site.register(InterviewerProfile)
 admin.site.register(Attendance)
