@@ -1,0 +1,78 @@
+# ==========================
+# Python & Virtual Environment
+# ==========================
+venv/
+env/
+ENV/
+.virtualenv/
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+settings.py
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ==========================
+# Django Specific
+# ==========================
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+migrations/*.pyc
+migrations/__pycache__/
+
+# ==========================
+# Environment & Secrets
+# ==========================
+.env
+.env.local
+.env.production
+.env.dev
+*.key
+secret_key.txt
+credentials.json
+config.json
+
+# ==========================
+# MySQL / Database Dumps
+# ==========================
+*.sql
+*.dump
+*.bak
+
+# ==========================
+# IDE / Editor Files
+# ==========================
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# ==========================
+# Test & Coverage
+# ==========================
+htmlcov/
+.coverage
+.coverage.*
+.cache
+pytest_cache/
+
+# ==========================
+# Logs & Runtime
+# ==========================
+logs/
+*.log
+celerybeat.pid
+celerybeat-schedule
+
+# ==========================
+# OS Generated
+# ==========================
+Thumbs.db
+ehthumbs.db
+Desktop.ini
