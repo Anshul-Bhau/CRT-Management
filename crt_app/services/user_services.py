@@ -33,8 +33,8 @@ class UserService:
         try:
             log_info(f"Attempting to create student -> {data['stu_email']}")
             user = Users.objects.create(
-                username = data["name"],
-                email = data["email"],
+                username = data["stu_name"],
+                email = data["stu_email"],
                 role = 'STUDENT',
                 password = make_password(data["rtu_roll_no"])
             )
@@ -61,4 +61,26 @@ class UserService:
 
     @staticmethod
     def create_tpo(data):
+        try:
+            log_info(f"Attempting to create tpo -> {data['tpo_email']}")
+            user_ = Users.objects.create(
+                username = data['tpo_name'],
+                email  = data['tpo_email'],
+                role = 'TPO',
+                password = make_password('sober')
+            )
+
+            tpo = TPOProfile.objects.create(
+                user = user_,
+                tpo_name = data['tpo_name'],
+                tpo_email = data['tpo_email'],
+                branch = data['branch'],
+                batch = data['batch']
+            )
+            log_info(f"Successfully created tpo {data['tpo_email']}")
+            return tpo
+        
+        except Exception as e:
+            log_error(f"Tpo creation failed -> {str(e)}")
+            raise e
 

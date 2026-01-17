@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models.academic import *
+from .models.attendance import Attendance
 from crt_app.utils.logger import log_info, log_error
 
 
@@ -14,3 +15,5 @@ class UserAdmin(admin.ModelAdmin):
 
 admin.site.register(StudentProfile)
 admin.site.register(InstructorProfile)
+admin.site.register(TPOProfile)
+admin.site.register(Attendance)
