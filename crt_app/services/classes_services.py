@@ -11,6 +11,7 @@ class ClassServices:
 
             created_class = Classes.objects.create(
                 instructor = instructor_,
+                ins_email = data['ins_email'],
                 date = data['date'],
                 start_time = data['start_time'],
                 end_time = data['end_time'],

@@ -105,6 +105,37 @@ class PerformanceAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
-admin.site.register(Classes)
-admin.site.register(Attendance)
+@admin.register(Classes)
+class ClassesAdmin(admin.ModelAdmin):
+    exclude = ('instructor',)
+
+    def save_model(self, request, obj, form, change):
+        if not obj.instructor:
+            instructor = InstructorProfile.objects.get(
+                ins_email = obj.ins_email
+            )
+            obj.instructor = instructor
+
+        super().save_model(request, obj, form, change)
+
+@admin.register(Attendance)
+class AttendanceAdmin(admin.ModelAdmin):
+    exclude = ('student', 'class_obj')
+
+    def save_model(self, request, obj, form, change):
+        if not (obj.student or obj.class_obj):
+            student = StudentProfile.objects.get(
+                stu_name=obj.stu_name,
+                stu_email=obj.stu_email,
+            )
+            class_ = Classes.objects.get(class_name = obj.class_name, 
+                                        date = obj.date, 
+                                        start_time = obj.start_time, 
+                                        end_time = obj.end_time, 
+                                        venue = obj.venue)
+            obj.student = student
+            obj.class_obj = class_
+
+        super().save_model(request, obj, form, change)
+
 

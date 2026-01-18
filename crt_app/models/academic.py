@@ -92,7 +92,7 @@ class Classes(models.Model):
         related_name='instructor_profile',
         null=True
     )
-
+    ins_email = models.EmailField(null=False)
     class_name = models.CharField(max_length=250 ,null=False, unique=False)
     date = models.DateField()
     start_time = models.TimeField()
