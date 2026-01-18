@@ -138,6 +138,25 @@ class AttendanceAdmin(admin.ModelAdmin):
             obj.student = student
             obj.class_obj = class_
 
+
+        if change:
+            old = Attendance.objects.get(pk=obj.pk)
+
+            if old.attended != obj.attended:
+                if obj.attended:
+                    obj.student.attendance += 1
+                else:
+                    obj.student.attendance -= 1
+                
+                if obj.student.attendance < 0:
+                    obj.student.attendance = 0
+
+                    obj.student.save()
+        else:
+            if obj.attended:
+                obj.student.attendance += 1
+                obj.student.save()
+                
         super().save_model(request, obj, form, change)
 
 

@@ -99,15 +99,39 @@ def create_performance(request):
         return JsonResponse({"error" : str(e)}, status=500)
     
 @csrf_exempt
-def create_attendance(request):
+def mark_attendance(request):
     if request.method != "POST":
         return JsonResponse({"error" : "Only POST allowed"}, status = 405)
     try:
         data = json.loads(request.body)
-        attendance = AttendanceServices.create_attendance(data=data)
+        attendance = AttendanceServices.mark_attendance(data=data)
         return JsonResponse({
             "message" : "attendance created",
             "id" : str(attendance.id)
         })
     except Exception as e:
         return JsonResponse({"error" : str(e)}, status=500)
+    
+
+@csrf_exempt
+def update_attendance(request, attendance_id):
+    if request.method != "PUT":
+        return JsonResponse({"error": "Only PUT allowed"}, status=405)
+    try:
+        data = json.loads(request.body)
+        if "attended" not in data:
+            return JsonResponse(
+                {"error": "attended field required"},
+                status=400
+            )
+        record = AttendanceServices.update_attendance(
+            attendance_id=attendance_id,
+            attended_status=data["attended"]
+        )
+        return JsonResponse({
+            "message": "Attendance updated",
+            "id": record.id,
+            "status": record.attended
+        })
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)

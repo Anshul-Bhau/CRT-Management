@@ -31,4 +31,4 @@ class Attendance(models.Model):
         else:
             return f"{self.student.stu_email} was Present for {self.class_obj.class_name} on {self.date}"
         
-        # 
+        
