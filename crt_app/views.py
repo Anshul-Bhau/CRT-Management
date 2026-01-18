@@ -2,6 +2,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from crt_app.services.user_services import UserService
 from crt_app.services.classes_services import ClassServices
+from crt_app.services.performance_services import PerformanceServices
 import json
 from crt_app.utils.logger import log_error, log_info
 
@@ -82,3 +83,16 @@ def create_class(request):
     except Exception as e:
         return JsonResponse({"error" : str(e)}, status=500)
     
+@csrf_exempt
+def create_performance(request):
+    if request.method != "POST":
+        return JsonResponse({"error" : "Only POST allowed"}, status = 405)
+    try:
+        data = json.loads(request.body)
+        performance = PerformanceServices.create_class(data=data)
+        return JsonResponse({
+            "message" : "performance created",
+            "id" : str(performance.id)
+        })
+    except Exception as e:
+        return JsonResponse({"error" : str(e)}, status=500)

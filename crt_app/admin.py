@@ -1,6 +1,7 @@
 from django.contrib import admin
 from .models.academic import *
 from .models.attendance import Attendance
+from .models.performance import Performance
 from crt_app.utils.logger import log_info, log_error
 
 
@@ -19,4 +20,5 @@ admin.site.register(TPOProfile)
 admin.site.register(InterviewerProfile)
 admin.site.register(Classes)
 admin.site.register(Attendance)
+admin.site.register(Performance)
 
