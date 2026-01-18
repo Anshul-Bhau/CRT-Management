@@ -20,7 +20,7 @@ class Performance(models.Model):
     student = models.OneToOneField(
         StudentProfile,
         on_delete=models.CASCADE,
-        related_name='student_profile'
+        related_name='student_performance'
     )
     
     subject = models.CharField(choices=SUB_CHOICES, max_length=70, null=False, blank=False)

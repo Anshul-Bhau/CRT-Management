@@ -74,8 +74,8 @@ class UserService:
                 user = user_,
                 tpo_name = data['tpo_name'],
                 tpo_email = data['tpo_email'],
-                branch = data['branch'],
-                batch = data['batch']
+                # branch = data['branch'],
+                # batch = data['batch']
             )
             log_info(f"Successfully created tpo {data['tpo_email']}")
             return tpo

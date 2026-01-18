@@ -9,8 +9,8 @@ class InstructorProfile(models.Model):
         on_delete=models.CASCADE,
         related_name='instructor_profile'
     )
-
-    full_name = models.CharField(max_length=250, unique=False, null=False)
+    ins_email = models.EmailField(null=False)
+    ins_name = models.CharField(max_length=250, unique=False, null=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -75,6 +75,8 @@ class InterviewerProfile(models.Model):
         on_delete=models.CASCADE,
         related_name='interviewer_profile'
     )
+    int_name = models.CharField(max_length=250, unique=False, blank=False, null=False)
+    int_email = models.EmailField(max_length=200, null=False, blank=False)
     sub = models.CharField(max_length=50, null=False, choices=SUBJECT_CHOICES)
     created_at = models.DateTimeField(auto_now_add=True)
 
