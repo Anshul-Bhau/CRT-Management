@@ -16,7 +16,7 @@ class UserAdmin(admin.ModelAdmin):
 
 @admin.register(TPOProfile)
 class TPOAdmin(admin.ModelAdmin):
-
+    list_display = ('tpo_name', 'tpo_email')
     exclude = ('user',)
 
     def save_model(self, request, obj, form, change):
@@ -33,7 +33,7 @@ class TPOAdmin(admin.ModelAdmin):
 
 @admin.register(StudentProfile)
 class StudentAdmin(admin.ModelAdmin):
-
+    list_display = ('stu_name', 'stu_email', 'rtu_roll_no', 'branch', 'tpo_email', 'attendance')
     exclude = ('user', 'tpo')
 
     def save_model(self, request, obj, form, change):
@@ -53,7 +53,7 @@ class StudentAdmin(admin.ModelAdmin):
 
 @admin.register(InstructorProfile)
 class InstructorAdmin(admin.ModelAdmin):
-
+    list_display = ('ins_name', 'ins_email')
     exclude = ('user',)
 
     def save_model(self, request, obj, form, change):
@@ -70,7 +70,7 @@ class InstructorAdmin(admin.ModelAdmin):
 
 @admin.register(InterviewerProfile)
 class InterviewerAdmin(admin.ModelAdmin):
-
+    list_display = ('int_name', 'int_email', 'sub')
     exclude = ('user',)
 
     def save_model(self, request, obj, form, change):
@@ -87,7 +87,7 @@ class InterviewerAdmin(admin.ModelAdmin):
 
 @admin.register(Performance)
 class PerformanceAdmin(admin.ModelAdmin):
-
+    list_display = ('stu_name', 'stu_email', 'subject', 'date')
     exclude = ('student', 'interviewer')
 
     def save_model(self, request, obj, form, change):
@@ -107,6 +107,7 @@ class PerformanceAdmin(admin.ModelAdmin):
 
 @admin.register(Classes)
 class ClassesAdmin(admin.ModelAdmin):
+    list_display = ('class_name', 'date', 'venue', 'start_time', 'end_time')
     exclude = ('instructor',)
 
     def save_model(self, request, obj, form, change):
@@ -120,6 +121,7 @@ class ClassesAdmin(admin.ModelAdmin):
 
 @admin.register(Attendance)
 class AttendanceAdmin(admin.ModelAdmin):
+    list_display = ('stu_name', 'class_name', 'date', 'venue', 'attended')
     exclude = ('student', 'class_obj')
 
     def save_model(self, request, obj, form, change):
