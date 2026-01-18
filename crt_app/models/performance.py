@@ -23,6 +23,9 @@ class Performance(models.Model):
         related_name='student_performance'
     )
     
+    stu_name = models.CharField(max_length=250, unique=False, blank=False)
+    stu_email = models.EmailField(null=False)
+    int_email = models.EmailField(null=False)
     subject = models.CharField(choices=SUB_CHOICES, max_length=70, null=False, blank=False)
     date = models.DateField(null=True)
     remark = models.TextField(null=True, blank=True)

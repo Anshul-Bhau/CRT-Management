@@ -32,7 +32,7 @@ class UserService:
     def create_student(data):
         try:
             log_info(f"Attempting to create student -> {data['stu_email']}")
-            user = Users.objects.create(
+            user_ = Users.objects.create(
                 username = data["stu_name"],
                 email = data["stu_email"],
                 role = 'STUDENT',
@@ -42,7 +42,7 @@ class UserService:
                 tpo_email = data['tpo_email']
             )
             student = StudentProfile.objects.create(
-                student = user,
+                user = user_,
                 tpo = tpo_,
                 stu_name = data['stu_name'],
                 stu_email = data['stu_email'],

@@ -34,16 +34,18 @@ class TPOAdmin(admin.ModelAdmin):
 @admin.register(StudentProfile)
 class StudentAdmin(admin.ModelAdmin):
 
-    exclude = ('user',)
+    exclude = ('user', 'tpo')
 
     def save_model(self, request, obj, form, change):
-        if not obj.user_id:
+        if not (obj.user_id or obj.tpo):
             user = Users.objects.create(
                 username=obj.stu_name,
                 email=obj.stu_email,
                 role='STUDENT',
                 password=make_password(obj.rtu_roll_no)
             )
+            tpo =TPOProfile.objects.get(tpo_email = obj.tpo_email)
+            obj.tpo = tpo
             obj.user = user
 
         super().save_model(request, obj, form, change)
@@ -83,7 +85,26 @@ class InterviewerAdmin(admin.ModelAdmin):
 
         super().save_model(request, obj, form, change)
 
+@admin.register(Performance)
+class PerformanceAdmin(admin.ModelAdmin):
+
+    exclude = ('student', 'interviewer')
+
+    def save_model(self, request, obj, form, change):
+        if not (obj.student or obj.interviewer):
+            student = StudentProfile.objects.get(
+                stu_name=obj.stu_name,
+                stu_email=obj.stu_email,
+            )
+            interviewer = InterviewerProfile.objects.get(
+                int_email = obj.int_email
+            )
+            obj.student = student
+            obj.interviewer = interviewer
+
+        super().save_model(request, obj, form, change)
+
+
 admin.site.register(Classes)
 admin.site.register(Attendance)
-admin.site.register(Performance)
 

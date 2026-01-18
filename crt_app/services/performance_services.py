@@ -13,6 +13,9 @@ class PerformanceServices:
             performance= Performance.objects.create(
                 interviewer = interviewer_,
                 student = student_,
+                stu_name = data['stu_name'],
+                stu_email = data['stu_email'],
+                int_email = data['int_email'],
                 subject = data['subject'],
                 date = data['date'],
                 remark = data['remark'],

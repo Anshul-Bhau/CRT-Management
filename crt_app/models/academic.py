@@ -14,7 +14,7 @@ class InstructorProfile(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.full_name
+        return self.ins_email
 
 class TPOProfile(models.Model):
     user = models.OneToOneField(
@@ -31,7 +31,7 @@ class TPOProfile(models.Model):
 
 class StudentProfile(models.Model):
 
-    student = models.OneToOneField(
+    user = models.OneToOneField(
         Users, 
         on_delete=models.CASCADE,
         related_name='student_profile'
