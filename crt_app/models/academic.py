@@ -86,7 +86,7 @@ class InterviewerProfile(models.Model):
     
 class Classes(models.Model):
 
-    instructor = models.OneToOneField(
+    instructor = models.ForeignKey(
         InstructorProfile,
         on_delete=models.SET_NULL,
         related_name='instructor_profile',
@@ -102,8 +102,8 @@ class Classes(models.Model):
     # batch_name = models.CharField(max_length=50, null=False)
     # batch_id = models.IntegerField(null=False)
 
-    def check_date(self):
-        if self.end_date < self.start_date:
+    def check_time(self):
+        if self.end_time <= self.start_time:
             raise ValidationError("End date must be after start date")
 
     def __str__(self):

@@ -1,13 +1,14 @@
 from django.contrib import admin
 from django.contrib.auth.hashers import make_password
-from .models.academic import *
-from .models.attendance import Attendance
-from .models.performance import Performance
+from .models import *
+from import_export.admin import ImportExportModelAdmin
 from crt_app.utils.logger import log_info, log_error
-
+from django.db import transaction
+from .resources import *
 
 @admin.register(Users)
-class UserAdmin(admin.ModelAdmin):
+class UserAdmin(ImportExportModelAdmin, admin.ModelAdmin):
+    resource_class = UserResource
     list_display = ('username', 'role', 'email')
 
     def save_model(self, request, obj, form, change):
@@ -15,10 +16,12 @@ class UserAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 @admin.register(TPOProfile)
-class TPOAdmin(admin.ModelAdmin):
+class TPOAdmin(ImportExportModelAdmin, admin.ModelAdmin):
+    resource_class = TPOResource
     list_display = ('tpo_name', 'tpo_email')
     exclude = ('user',)
 
+    @transaction.atomic
     def save_model(self, request, obj, form, change):
         if not obj.user_id:
             user = Users.objects.create(
@@ -32,10 +35,12 @@ class TPOAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 @admin.register(StudentProfile)
-class StudentAdmin(admin.ModelAdmin):
+class StudentAdmin(ImportExportModelAdmin, admin.ModelAdmin):
+    resource_class = StudentResource
     list_display = ('stu_name', 'stu_email', 'rtu_roll_no', 'branch', 'tpo_email', 'attendance')
     exclude = ('user', 'tpo')
 
+    @transaction.atomic
     def save_model(self, request, obj, form, change):
         if not (obj.user_id or obj.tpo):
             user = Users.objects.create(
@@ -44,7 +49,14 @@ class StudentAdmin(admin.ModelAdmin):
                 role='STUDENT',
                 password=make_password(obj.rtu_roll_no)
             )
-            tpo =TPOProfile.objects.get(tpo_email = obj.tpo_email)
+            try:
+                tpo = TPOProfile.objects.get(
+                    tpo_email=obj.tpo_email
+                )
+            except TPOProfile.DoesNotExist:
+                raise ValueError(
+                    f"TPO not found → {obj.tpo_email}"
+                )
             obj.tpo = tpo
             obj.user = user
 
@@ -52,10 +64,12 @@ class StudentAdmin(admin.ModelAdmin):
 
 
 @admin.register(InstructorProfile)
-class InstructorAdmin(admin.ModelAdmin):
+class InstructorAdmin(ImportExportModelAdmin, admin.ModelAdmin):
+    resource_class = InstructorResource
     list_display = ('ins_name', 'ins_email')
     exclude = ('user',)
 
+    @transaction.atomic
     def save_model(self, request, obj, form, change):
         if not obj.user_id:
             user = Users.objects.create(
@@ -69,16 +83,18 @@ class InstructorAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 @admin.register(InterviewerProfile)
-class InterviewerAdmin(admin.ModelAdmin):
+class InterviewerAdmin(ImportExportModelAdmin, admin.ModelAdmin):
+    resource_class =  InterviewerResource
     list_display = ('int_name', 'int_email', 'sub')
     exclude = ('user',)
 
+    @transaction.atomic
     def save_model(self, request, obj, form, change):
         if not obj.user_id:
             user = Users.objects.create(
                 username=obj.int_name,
                 email=obj.int_email,
-                role='TPO',
+                role='INTERVIEWER',
                 password=make_password('sober')
             )
             obj.user = user
@@ -104,12 +120,13 @@ class PerformanceAdmin(admin.ModelAdmin):
 
         super().save_model(request, obj, form, change)
 
-
 @admin.register(Classes)
-class ClassesAdmin(admin.ModelAdmin):
+class ClassesAdmin(ImportExportModelAdmin, admin.ModelAdmin):
+    resource_class = ClassesResource
     list_display = ('class_name', 'date', 'venue', 'start_time', 'end_time')
     exclude = ('instructor',)
 
+    @transaction.atomic
     def save_model(self, request, obj, form, change):
         if not obj.instructor:
             instructor = InstructorProfile.objects.get(
@@ -120,7 +137,8 @@ class ClassesAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 @admin.register(Attendance)
-class AttendanceAdmin(admin.ModelAdmin):
+class AttendanceAdmin(ImportExportModelAdmin, admin.ModelAdmin):
+    resource_class = AttendanceResource
     list_display = ('stu_name', 'class_name', 'date', 'venue', 'attended')
     exclude = ('student', 'class_obj')
 
@@ -151,7 +169,7 @@ class AttendanceAdmin(admin.ModelAdmin):
                 if obj.student.attendance < 0:
                     obj.student.attendance = 0
 
-                    obj.student.save()
+                obj.student.save()
         else:
             if obj.attended:
                 obj.student.attendance += 1
