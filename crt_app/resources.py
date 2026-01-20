@@ -4,7 +4,6 @@ from import_export import resources, fields
 from django.db import transaction
 from .models import *
 from import_export.widgets import ForeignKeyWidget
-from import_export.exceptions import SkipRow
 
 class UserResource(resources.ModelResource):
     class Meta:
@@ -95,10 +94,10 @@ class StudentResource(resources.ModelResource):
         tpo  = self.tpo_cache.get(tpo_email)
 
         if not user:
-            raise SkipRow("User mapping failed")
+            raise ValidationError("User mapping failed")
 
         if not tpo:
-            raise SkipRow("TPO mapping failed")
+            raise ValidationError("TPO mapping failed")
 
         instance.user = user
         instance.tpo  = tpo
@@ -109,7 +108,7 @@ class StudentResource(resources.ModelResource):
             "row" : row.copy(),
             "error" : message
         })
-        raise SkipRow(message)
+        raise ValidationError(message)
 
     def after_import(self, dataset, result, **kwargs):
         self.result = {
@@ -227,7 +226,7 @@ class AttendanceResource(resources.ModelResource):
             "row" : row.copy(),
             "error" : message
         })
-        raise SkipRow(message)
+        raise ValidationError(message)
 
     def after_import(self, dataset, result, **kwargs):
         self.result = {
@@ -295,7 +294,7 @@ class InstructorResource(resources.ModelResource):
         user = self.user_cache.get(email)
 
         if not user:
-            raise SkipRow("User mapping failed")
+            raise ValidationError("User mapping failed")
 
         instance.user = user
     
@@ -308,7 +307,7 @@ class InstructorResource(resources.ModelResource):
             "row" : row.copy(),
             "error" : message
         })
-        raise SkipRow(message)
+        raise ValidationError(message)
 
     def after_import(self, dataset, result, **kwargs):
         self.result = {
@@ -421,7 +420,7 @@ class ClassesResource(resources.ModelResource):
             "row" : row.copy(),
             "error" : message
         })
-        raise SkipRow(message)
+        raise ValidationError(message)
 
     def after_import(self, dataset, result, **kwargs):
         self.result = {
@@ -507,7 +506,7 @@ class TPOResource(resources.ModelResource):
             "row" : row.copy(),
             "error" : message
         })
-        raise SkipRow(message)
+        raise ValidationError(message)
 
     def after_import(self, dataset, result, **kwargs):
         self.result = {
@@ -583,7 +582,7 @@ class InterviewerResource(resources.ModelResource):
         email = instance.int_email.lower().strip()
         user = self.user_cache.get(email)
         if not user:
-            raise SkipRow("User mapping failed")
+            raise ValidationError("User mapping failed")
         
         instance.user = user
     
@@ -592,7 +591,7 @@ class InterviewerResource(resources.ModelResource):
             "row" : row.copy(),
             "error" : message
         })
-        raise SkipRow(message)
+        raise ValidationError(message)
 
     def after_import(self, dataset, result, **kwargs):
         self.result = {
