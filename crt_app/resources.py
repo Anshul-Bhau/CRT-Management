@@ -200,4 +200,39 @@ class InterviewerResource(resources.ModelResource):
         )
 
 
+class PerformanceExportResource(resources.ModelResource):
+
+    student = fields.Field(
+        column_name='student_email',
+        attribute='student',
+        widget=ForeignKeyWidget(StudentProfile, 'stu_email')
+    )
+
+    interviewer = fields.Field(
+        column_name='interviewer_email',
+        attribute='interviewer',
+        widget=ForeignKeyWidget(InterviewerProfile, 'int_email')
+    )
+
+    class Meta:
+        model = Performance
+
+        # Only export — no import soul lives here
+        import_id_fields = []
+        skip_unchanged = True
+
+        fields = (
+            'stu_name',
+            'stu_email',
+            'int_email',
+            'subject',
+            'date',
+            'score',
+            'remark',
+            'student',
+            'interviewer',
+        )
+
+        export_order = fields
+
 

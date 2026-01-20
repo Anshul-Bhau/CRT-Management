@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.hashers import make_password
 from .models import *
-from import_export.admin import ImportExportModelAdmin
+from import_export.admin import ImportExportModelAdmin, ExportMixin
 from crt_app.utils.logger import log_info, log_error
 from django.db import transaction
 from .resources import *
@@ -102,7 +102,8 @@ class InterviewerAdmin(ImportExportModelAdmin, admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 @admin.register(Performance)
-class PerformanceAdmin(admin.ModelAdmin):
+class PerformanceAdmin(ExportMixin, admin.ModelAdmin):
+    resource_class = PerformanceExportResource
     list_display = ('stu_name', 'stu_email', 'subject', 'date')
     exclude = ('student', 'interviewer')
 
