@@ -2,6 +2,7 @@ from django.forms import ValidationError
 from datetime import datetime
 from django.contrib.auth.hashers import make_password
 from import_export import resources, fields
+from import_export.results import RowResult
 from django.db import transaction
 from .models import *
 from import_export.widgets import ForeignKeyWidget, DateWidget, TimeWidget
@@ -270,7 +271,7 @@ class AttendanceResource(resources.ModelResource):
             "total" : len(dataset.dict),
             "failed_count" : len(self.failed_rows)
         }
-        
+    
 class InstructorResource(resources.ModelResource):
     
     class Meta:
