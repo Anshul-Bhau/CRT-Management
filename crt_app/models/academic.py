@@ -36,7 +36,7 @@ class StudentProfile(models.Model):
         on_delete=models.CASCADE,
         related_name='student_profile'
     )
-    tpo = models.OneToOneField(
+    tpo = models.ForeignKey(
         TPOProfile,
         on_delete=models.SET_NULL,
         related_name='tpo_profile',

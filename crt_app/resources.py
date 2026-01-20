@@ -22,7 +22,7 @@ class StudentResource(resources.ModelResource):
         export_order = ('stu_name', 'stu_email', 'rtu_roll_no', 'branch', 'attendance', 'tpo_email')
         import_id_fields = ('rtu_roll_no',)
 
-        skip_unchanged = True
+        skip_unchanged = False
         report_skipped = True
         skip_transactions = True 
 
@@ -85,7 +85,7 @@ class StudentResource(resources.ModelResource):
 
             self.user_cache[email] = user
 
-    def before_save_instance(self, instance, **kwargs):
+    def before_save_instance(self, instance, *args, **kwargs):
 
         email = instance.stu_email.strip().lower()
         tpo_email = instance.tpo_email.strip().lower()
@@ -146,7 +146,7 @@ class AttendanceResource(resources.ModelResource):
             'venue'
         )
 
-        skip_unchanged = True
+        skip_unchanged = False
         report_skipped = True
         skip_transactions = True 
 
@@ -244,7 +244,7 @@ class InstructorResource(resources.ModelResource):
         fields = ('ins_name', 'ins_email')
         export_order = ('ins_name', 'ins_email')
 
-        skip_unchanged = True
+        skip_unchanged = False
         report_skipped = True
         skip_transactions = True 
 
@@ -265,10 +265,13 @@ class InstructorResource(resources.ModelResource):
         self.user_cache = {
             u.email.lower() : u for u in Users.objects.all()
         }
+
+        self.ins_cache = {
+            i.ins_email.lower() : i for i in InstructorProfile.objects.all()
+        }
         
     
     def before_import_row(self, row, **kwargs):
-        
         email = str(row.get('ins_email', '')).strip().lower()
         name = str(row.get('ins_name', '')).strip()
 
@@ -277,6 +280,7 @@ class InstructorResource(resources.ModelResource):
         if not name: 
             self.handle_row_error(row, "Instructor name missing")
         
+        user = self.user_cache.get(email)
         if email not in self.user_cache:
             user = Users.objects.create(
                 email = email,
@@ -287,20 +291,11 @@ class InstructorResource(resources.ModelResource):
             self.user_cache[email] = user
 
         
-    def before_save_instance(self, instance, using_transactions, dry_run):
-
+    def before_save_instance(self, instance, *args, **kwargs):
         email = instance.ins_email.lower().strip()
-
-        user = self.user_cache.get(email)
-
-        if not user:
-            raise ValidationError("User mapping failed")
-
-        instance.user = user
-    
-    def save_instance(self, instance, is_create, row, **kwargs):
-        if not kwargs.get('dry_run'):
-            instance.save()
+        instance.user = self.user_cache.get(email)
+        if not instance.user:
+            raise ValidationError(f"User mapping failed for {email}")
 
     def handle_row_error(self, row, message):
         self.failed_rows.append({
@@ -326,7 +321,7 @@ class ClassesResource(resources.ModelResource):
         fields = ("ins_email", "class_name", 'date', 'start_time', 'end_time','venue')
 
         export_order = fields
-        skip_unchanged = True
+        skip_unchanged = False
         report_skipped = True
         skip_transactions = True 
 
@@ -437,7 +432,7 @@ class TPOResource(resources.ModelResource):
         fields = ('tpo_name', 'tpo_email')
         export_order = ('tpo_name', 'tpo_email')
     
-        skip_unchanged = True
+        skip_unchanged = False
         report_skipped = True
         skip_transactions = True 
     
@@ -477,8 +472,7 @@ class TPOResource(resources.ModelResource):
         
         # ─── USER CREATION ───
         user = self.user_cache.get(email)
-
-        if not user:
+        if email not in self.user_cache:
             user = Users.objects.create(
                 email=email,
                 username=name,
@@ -486,20 +480,12 @@ class TPOResource(resources.ModelResource):
                 password=make_password("sober")
             )
             self.user_cache[email] = user
-
-        # ─── TPO PROFILE ───
-        tpo = self.tpo_cache.get(email)
-
-        if not tpo:
-            tpo = TPOProfile.objects.create(
-                tpo_email=email,
-                tpo_name=name,
-                user=user
-            )
-            self.tpo_cache[email] = tpo
-
-        # bind object for importer
-        row['id'] = tpo.id
+    
+    def before_save_instance(self, instance, row, **kwargs):
+        email = instance.tpo_email.lower().strip()
+        instance.user = self.user_cache.get(email)
+        if not instance.user:
+            raise ValidationError(f"User mapping failed for {email}")
 
     def handle_row_error(self, row, message):
         self.failed_rows.append({
@@ -525,7 +511,7 @@ class InterviewerResource(resources.ModelResource):
         export_order = fields
         import_id_fields = ('int_email',)
 
-        skip_unchanged = True
+        skip_unchanged = False
         report_skipped = True
         skip_transactions = True 
     
@@ -619,7 +605,7 @@ class PerformanceExportResource(resources.ModelResource):
 
         # Only export — no import 
         import_id_fields = []
-        skip_unchanged = True
+        skip_unchanged = False
 
         fields = (
             'stu_name',
