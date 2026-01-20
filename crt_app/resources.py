@@ -25,6 +25,7 @@ class StudentResource(resources.ModelResource):
 
         skip_unchanged = True
         report_skipped = True
+        skip_transactions = True 
 
     def before_import(self, dataset, **kwargs):
         self.failed_rows = []
@@ -148,6 +149,7 @@ class AttendanceResource(resources.ModelResource):
 
         skip_unchanged = True
         report_skipped = True
+        skip_transactions = True 
 
     def before_import(self, dataset, **kwargs):
         self.failed_rows = []
@@ -234,8 +236,6 @@ class AttendanceResource(resources.ModelResource):
             "failed_count" : len(self.failed_rows)
         }
         
-
-
 class InstructorResource(resources.ModelResource):
     
     class Meta:
@@ -247,6 +247,7 @@ class InstructorResource(resources.ModelResource):
 
         skip_unchanged = True
         report_skipped = True
+        skip_transactions = True 
 
     def before_import(self, dataset, **kwargs):
         self.failed_rows = []
@@ -324,9 +325,11 @@ class ClassesResource(resources.ModelResource):
         exclude = ('id',)
         import_id_fields = ["ins_email", "class_name", 'date', 'start_time', 'end_time','venue']
         fields = ("ins_email", "class_name", 'date', 'start_time', 'end_time','venue')
+
         export_order = fields
         skip_unchanged = True
         report_skipped = True
+        skip_transactions = True 
 
     def before_import(self, dataset, **kwargs):
         self.failed_rows = []
@@ -427,8 +430,6 @@ class ClassesResource(resources.ModelResource):
             "failed_count" : len(self.failed_rows)
         }
     
-    
-
 class TPOResource(resources.ModelResource):
     class Meta:
         model = TPOProfile
@@ -439,6 +440,7 @@ class TPOResource(resources.ModelResource):
     
         skip_unchanged = True
         report_skipped = True
+        skip_transactions = True 
     
     def before_import(self, dataset, **kwargs):
         
@@ -514,7 +516,6 @@ class TPOResource(resources.ModelResource):
             "failed_count" : len(self.failed_rows)
         }
 
-
 class InterviewerResource(resources.ModelResource):
     user = fields.Field(column_name='int_email', attribute='user', widget=ForeignKeyWidget(Users, 'email'))
 
@@ -527,6 +528,7 @@ class InterviewerResource(resources.ModelResource):
 
         skip_unchanged = True
         report_skipped = True
+        skip_transactions = True 
     
     def before_import(self, dataset, **kwargs):
         
@@ -599,7 +601,6 @@ class InterviewerResource(resources.ModelResource):
             "failed_count" : len(self.failed_rows)
         }
 
-
 class PerformanceExportResource(resources.ModelResource):
 
     student = fields.Field(
@@ -617,7 +618,7 @@ class PerformanceExportResource(resources.ModelResource):
     class Meta:
         model = Performance
 
-        # Only export — no import soul lives here
+        # Only export — no import 
         import_id_fields = []
         skip_unchanged = True
 
@@ -635,6 +636,4 @@ class PerformanceExportResource(resources.ModelResource):
 
         export_order = fields
 
-
-# partial import failure
 # An admin page that downloads failed rows as CSV for correction
