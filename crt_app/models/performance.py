@@ -10,14 +10,14 @@ class Performance(models.Model):
         ('GD_EXTEMPORE', 'GD_EXTEMPORE')
     ]
 
-    interviewer = models.OneToOneField(
+    interviewer = models.ForeignKey(
         InterviewerProfile,
         on_delete=models.SET_NULL,
         related_name='interviewer_profile',
         null=True
     )
 
-    student = models.OneToOneField(
+    student = models.ForeignKey(
         StudentProfile,
         on_delete=models.CASCADE,
         related_name='student_performance'
