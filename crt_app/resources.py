@@ -1,9 +1,10 @@
 from django.forms import ValidationError
+from datetime import datetime
 from django.contrib.auth.hashers import make_password
 from import_export import resources, fields
 from django.db import transaction
 from .models import *
-from import_export.widgets import ForeignKeyWidget
+from import_export.widgets import ForeignKeyWidget, DateWidget, TimeWidget
 
 class UserResource(resources.ModelResource):
     class Meta:
@@ -121,14 +122,35 @@ class AttendanceResource(resources.ModelResource):
 
     student = fields.Field(
         column_name='stu_email',
-        attribute='student',
-        widget=ForeignKeyWidget(StudentProfile, 'stu_email')
+        attribute='student'
     )
 
     class_obj = fields.Field(
-        column_name='class_name',
-        attribute='class_obj',
-        widget=ForeignKeyWidget(Classes, 'class_name')
+    column_name='class_name',
+    attribute='class_obj'
+    )
+
+    date = fields.Field(
+        column_name='date',
+        attribute='date',
+        widget=DateWidget(format='%d-%m-%Y')
+    )
+
+    start_time = fields.Field(
+        column_name='start_time',
+        attribute='start_time',
+        widget=TimeWidget(format='%H:%M:%S')
+    )
+
+    end_time = fields.Field(
+        column_name='end_time',
+        attribute='end_time',
+        widget=TimeWidget(format='%H:%M:%S')
+    )
+
+    venue = fields.Field(
+    column_name='venue',
+    attribute='venue'
     )
 
     class Meta:
@@ -149,6 +171,7 @@ class AttendanceResource(resources.ModelResource):
         skip_unchanged = False
         report_skipped = True
         skip_transactions = True 
+        use_natural_foreign_keys = False
 
     def before_import(self, dataset, **kwargs):
         self.failed_rows = []
@@ -165,7 +188,7 @@ class AttendanceResource(resources.ModelResource):
             self.batch_size = 1000
             
         self.student_cache = {
-            s.stu_email : s for s in StudentProfile.objects.all()
+            s.stu_email.lower() : s for s in StudentProfile.objects.all()
         }
 
         self.class_cache = {}
@@ -173,39 +196,52 @@ class AttendanceResource(resources.ModelResource):
         for c in Classes.objects.all():
             key = (
                 c.class_name.strip().lower(),
-                str(c.date),
-                str(c.start_time),
-                str(c.venue).strip().lower(),
+                c.date,
+                c.start_time,
+                c.venue.strip().lower(),
             )
             self.class_cache[key] = c
     
     def before_import_row(self, row, **kwargs):
         row['attended'] = str(row.get("attended")).strip().lower() in ["1", "true", "yes", "present"]
 
-        if row["stu_email"] not in self.student_cache:
+        row["stu_email"] = row["stu_email"].strip().lower()
+
+        if isinstance(row["date"], str):
+            row["date"] = datetime.strptime(row["date"], "%d-%m-%Y").date()
+
+        if isinstance(row["start_time"], str):
+            row["start_time"] = datetime.strptime(row["start_time"], "%H:%M:%S").time()
+
+        if row['stu_email'].lower() not in self.student_cache:
             self.handle_row_error(row, f"Student not found -> {row['stu_email']}")
+
         key = (
             row["class_name"].strip().lower(),
-            str(row["date"]),
-            str(row["start_time"]),
-            str(row["venue"]).strip().lower()
+            row["date"],
+            row["start_time"],
+            row["venue"].strip().lower()
         )
 
         if key not in self.class_cache:
             self.handle_row_error(row, f"Class not found -> {row['class_name']}")
 
-        row["student"] = self.student_cache[row["stu_email"]]
+        row["student"] = self.student_cache[row['stu_email'].lower()]
         row["class_obj"] = self.class_cache[key]
     
     def get_instance(self, instance_loader, row):
-
         return Attendance.objects.filter(
-            stu_email=row["stu_email"],
-            class_name=row["class_name"],
-            date=row["date"],
-            start_time=row["start_time"],
-            venue=row["venue"]
-        ).first()
+        student__stu_email=row["stu_email"],
+        class_obj__class_name=row["class_name"],
+        class_obj__date=row["date"],
+        class_obj__start_time=row["start_time"],
+        class_obj__venue=row["venue"]
+    ).first()
+
+    def before_save_instance(self, instance, row, **kwargs):
+        instance.student = row["student"]
+        instance.class_obj = row["class_obj"]
+
     
     def after_save_instance(self, instance, row, **kwargs):
         if kwargs.get('dry_run'):
@@ -313,6 +349,21 @@ class InstructorResource(resources.ModelResource):
 
 class ClassesResource(resources.ModelResource):
     instructor = fields.Field(column_name='ins_email', attribute='instructor', widget=ForeignKeyWidget(InstructorProfile, 'ins_email'))
+    date = fields.Field(
+        column_name='date',
+        attribute='date',
+        widget=DateWidget(format='%Y-%m-%d')
+    )
+    start_time = fields.Field(
+        column_name='start_time',
+        attribute='start_time',
+        widget=TimeWidget(format='%H:%M:%S')
+    )
+    end_time = fields.Field(
+        column_name='end_time',
+        attribute='end_time',
+        widget=TimeWidget(format='%H:%M:%S')
+    )
 
     class Meta:
         model = Classes
@@ -371,6 +422,15 @@ class ClassesResource(resources.ModelResource):
 
     # ─── VALIDATE EACH ROW ───
     def before_import_row(self, row, **kwargs):
+
+        if 'date' in row and row['date']:
+            try:
+                # convert from DD-MM-YYYY to YYYY-MM-DD
+                parsed = datetime.strptime(row['date'], "%d-%m-%Y")
+                row['date'] = parsed.strftime("%Y-%m-%d")
+
+            except ValueError:
+                self.handle_row_error(row, f"Invalid date format: {row['date']}")
 
         email = row['ins_email'].strip().lower()
 

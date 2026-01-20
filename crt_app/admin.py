@@ -140,23 +140,39 @@ class ClassesAdmin(ImportExportModelAdmin, admin.ModelAdmin):
 @admin.register(Attendance)
 class AttendanceAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     resource_class = AttendanceResource
-    list_display = ('stu_name', 'class_name', 'date', 'venue', 'attended')
+    list_display = ('stu_email', 'class_name', 'date', 'venue', 'attended')
     exclude = ('student', 'class_obj')
 
     def save_model(self, request, obj, form, change):
-        if not (obj.student or obj.class_obj):
-            student = StudentProfile.objects.get(
-                stu_name=obj.stu_name,
-                stu_email=obj.stu_email,
-            )
-            class_ = Classes.objects.get(class_name = obj.class_name, 
-                                        date = obj.date, 
-                                        start_time = obj.start_time, 
-                                        end_time = obj.end_time, 
-                                        venue = obj.venue)
-            obj.student = student
-            obj.class_obj = class_
+        if not obj.student_id:
+            try:
+                obj.student = StudentProfile.objects.get(
+                    stu_email=obj.stu_email
+                )
+            except StudentProfile.DoesNotExist:
+                raise ValidationError(
+                    f"No student found with email {obj.stu_email}"
+                )
 
+    
+        if not obj.class_obj_id:
+            class_qs = Classes.objects.filter(
+                class_name__iexact=obj.class_name.strip(),
+                date=obj.date,
+                venue__iexact=obj.venue.strip(),
+            )
+
+            if not class_qs.exists():
+                raise ValidationError(
+                    f"No class found for {obj.class_name} on {obj.date} at {obj.venue}"
+                )
+
+            if class_qs.count() > 1:
+                raise ValidationError(
+                    "Multiple matching classes found. Please refine start/end time."
+                )
+
+            obj.class_obj = class_qs.first()
 
         if change:
             old = Attendance.objects.get(pk=obj.pk)
