@@ -106,6 +106,9 @@ class Classes(models.Model):
         if self.end_time <= self.start_time:
             raise ValidationError("End date must be after start date")
 
+    def clean(self):
+        self.check_time()
+        
     def __str__(self):
         return f"{self.class_name} at {self.date}"
     

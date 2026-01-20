@@ -4,12 +4,13 @@ from import_export import resources, fields
 from django.db import transaction
 from .models import *
 from import_export.widgets import ForeignKeyWidget
+from import_export.exceptions import SkipRow
 
 class UserResource(resources.ModelResource):
     class Meta:
         model = Users
-        fields = ('last_login', 'is_superuser', 'groups', 'user_permissions', 'first_name', 'last_name', 'is_staff', 'is_active', 'date_joined', 'id', 'username', 'email', 'password', 'role', 'phone_no', 'user_created_at')
-        export_order = ('last_login', 'is_superuser', 'groups', 'user_permissions', 'first_name', 'last_name', 'is_staff', 'is_active', 'date_joined', 'id', 'username', 'email', 'password', 'role', 'phone_no', 'user_created_at')
+        fields = ('username', 'email', 'password', 'role', 'phone_no')
+        export_order = fields
 
 class StudentResource(resources.ModelResource):
     user = fields.Field(column_name='stu_email', attribute='user', widget=ForeignKeyWidget(Users, 'email'))
@@ -18,14 +19,15 @@ class StudentResource(resources.ModelResource):
     class Meta:
         model = StudentProfile
         exclude = ('student_created_at',)
-        fields = ('stu_name', 'stu_email', 'rtu_roll_no', 'branch','attendance', 'score', 'tpo_email')
-        export_order = ('stu_name', 'stu_email', 'rtu_roll_no', 'branch', 'attendance', 'score', 'tpo_email')
+        fields = ('stu_name', 'stu_email', 'rtu_roll_no', 'branch','attendance', 'tpo_email')
+        export_order = ('stu_name', 'stu_email', 'rtu_roll_no', 'branch', 'attendance', 'tpo_email')
         import_id_fields = ('rtu_roll_no',)
 
         skip_unchanged = True
         report_skipped = True
 
     def before_import(self, dataset, **kwargs):
+        self.failed_rows = []
         size = len(dataset.dict)
 
         # ─── SMALL FILE MODE ───
@@ -38,44 +40,82 @@ class StudentResource(resources.ModelResource):
             self.use_bulk = True
             self.batch_size = 1000
 
-        emails = [r['stu_email'] for r in dataset.dict]
-        tpo_emails = [r['tpo_email'] for r in dataset.dict]
+        # cache TPOs
+        self.tpo_cache = {
+            t.tpo_email.strip().lower(): t
+            for t in TPOProfile.objects.all()
+        }
 
-        existing_users = set(
-            Users.objects.filter(email__in=emails)
-            .values_list('email', flat=True)
-        )
+        # cache Users
+        self.user_cache = {
+            u.email.strip().lower(): u
+            for u in Users.objects.all()
+        }
+    
+    def before_import_row(self, row, **kwargs):
 
-        valid_tpos = set(
-            TPOProfile.objects.filter(tpo_email__in=tpo_emails)
-            .values_list('tpo_email', flat=True)
-        )
+        email = str(row.get('stu_email','')).strip().lower()
+        tpo_email = str(row.get('tpo_email','')).strip().lower()
+        name = str(row.get('stu_name','')).strip()
+        roll = str(row.get('rtu_roll_no','')).strip()
 
-        users_to_create = []
+        if not email:
+            self.handle_row_error(row, "Student email missing")
+            return
 
-        for row in dataset.dict:
+        if not tpo_email:
+            self.handle_row_error(row, "TPO email missing")
+            return
 
-            if row['tpo_email'] not in valid_tpos:
-                raise ValueError(
-                    f"TPO not found → {row['tpo_email']}"
-                )
+        if tpo_email not in self.tpo_cache:
+            self.handle_row_error(row, f"TPO not found → {tpo_email}")
+            return
+        
+        user = self.user_cache.get(email)
 
-            if row['stu_email'] not in existing_users:
-
-                u = Users(
-                    username=row['stu_name'],
-                    email=row['stu_email'],
-                    role='STUDENT'
-                )
-
-                u.set_password(row['rtu_roll_no'])
-                users_to_create.append(u)
-
-        if users_to_create:
-            Users.objects.bulk_create(
-                users_to_create,
-                batch_size=self.batch_size
+        if not user:
+            user = Users.objects.create(
+                email=email,
+                username=name,
+                role='STUDENT'
             )
+
+            user.set_password(roll)
+            user.save()
+
+            self.user_cache[email] = user
+
+    def before_save_instance(self, instance, **kwargs):
+
+        email = instance.stu_email.strip().lower()
+        tpo_email = instance.tpo_email.strip().lower()
+
+        user = self.user_cache.get(email)
+        tpo  = self.tpo_cache.get(tpo_email)
+
+        if not user:
+            raise SkipRow("User mapping failed")
+
+        if not tpo:
+            raise SkipRow("TPO mapping failed")
+
+        instance.user = user
+        instance.tpo  = tpo
+
+    
+    def handle_row_error(self, row, message):
+        self.failed_rows.append({
+            "row" : row.copy(),
+            "error" : message
+        })
+        raise SkipRow(message)
+
+    def after_import(self, dataset, result, **kwargs):
+        self.result = {
+            "failed" : self.failed_rows,
+            "total" : len(dataset.dict),
+            "failed_count" : len(self.failed_rows)
+        }
 
 class AttendanceResource(resources.ModelResource):
 
@@ -110,7 +150,7 @@ class AttendanceResource(resources.ModelResource):
         report_skipped = True
 
     def before_import(self, dataset, **kwargs):
-        
+        self.failed_rows = []
         size = len(dataset.dict)
 
         # ─── SMALL FILE MODE ───
@@ -142,8 +182,7 @@ class AttendanceResource(resources.ModelResource):
         row['attended'] = str(row.get("attended")).strip().lower() in ["1", "true", "yes", "present"]
 
         if row["stu_email"] not in self.student_cache:
-            raise ValueError(f"Student not found -> {row['stu_email']}")
-        
+            self.handle_row_error(row, f"Student not found -> {row['stu_email']}")
         key = (
             row["class_name"].strip().lower(),
             str(row["date"]),
@@ -152,8 +191,7 @@ class AttendanceResource(resources.ModelResource):
         )
 
         if key not in self.class_cache:
-            raise ValueError(f"Class not found → {row['class_name']} "
-                f"on {row['date']} at {row['venue']}")
+            self.handle_row_error(row, f"Class not found -> {row['class_name']}")
 
         row["student"] = self.student_cache[row["stu_email"]]
         row["class_obj"] = self.class_cache[key]
@@ -168,8 +206,8 @@ class AttendanceResource(resources.ModelResource):
             venue=row["venue"]
         ).first()
     
-    def after_save_instance(self, instance, using_transactions, dry_run):
-        if dry_run:
+    def after_save_instance(self, instance, row, **kwargs):
+        if kwargs.get('dry_run'):
             return
 
         student = instance.student
@@ -181,6 +219,20 @@ class AttendanceResource(resources.ModelResource):
 
         student.attendance = total
         student.save()
+
+    def handle_row_error(self, row, message):
+        self.failed_rows.append({
+            "row" : row.copy(),
+            "error" : message
+        })
+        raise SkipRow(message)
+
+    def after_import(self, dataset, result, **kwargs):
+        self.result = {
+            "failed" : self.failed_rows,
+            "total" : len(dataset.dict),
+            "failed_count" : len(self.failed_rows)
+        }
         
 
 
@@ -197,7 +249,7 @@ class InstructorResource(resources.ModelResource):
         report_skipped = True
 
     def before_import(self, dataset, **kwargs):
-        
+        self.failed_rows = []
         size = len(dataset.dict)
 
         # ─── SMALL FILE MODE ───
@@ -211,11 +263,9 @@ class InstructorResource(resources.ModelResource):
             self.batch_size = 1000
         
         self.user_cache = {
-            u.email : u for u in Users.objects.all()
+            u.email.lower() : u for u in Users.objects.all()
         }
-        self.instructor_cache = {
-            i.ins_email : i for i in InstructorProfile.objects.all()
-        }
+        
     
     def before_import_row(self, row, **kwargs):
         
@@ -223,12 +273,11 @@ class InstructorResource(resources.ModelResource):
         name = str(row.get('ins_name', '')).strip()
 
         if not email:
-            raise ValueError("Instructor email missing")
+            self.handle_row_error(row, "Instructor email missing")
         if not name: 
-            raise ValueError("Instructor name missing")
+            self.handle_row_error(row, "Instructor name missing")
         
-        user = self.user_cache.get(email)
-        if not user:
+        if email not in self.user_cache:
             user = Users.objects.create(
                 email = email,
                 username = name,
@@ -237,17 +286,35 @@ class InstructorResource(resources.ModelResource):
                 )
             self.user_cache[email] = user
 
-        instructor = self.instructor_cache.get(email)
+        
+    def before_save_instance(self, instance, using_transactions, dry_run):
 
-        if not instructor:
-            instructor = InstructorProfile.objects.create(
-                ins_email=email,
-                ins_name=name,
-                user=user
-            )
-            self.instructor_cache[email] = instructor
+        email = instance.ins_email.lower().strip()
 
-        row['id'] = instructor.id
+        user = self.user_cache.get(email)
+
+        if not user:
+            raise SkipRow("User mapping failed")
+
+        instance.user = user
+    
+    def save_instance(self, instance, is_create, row, **kwargs):
+        if not kwargs.get('dry_run'):
+            instance.save()
+
+    def handle_row_error(self, row, message):
+        self.failed_rows.append({
+            "row" : row.copy(),
+            "error" : message
+        })
+        raise SkipRow(message)
+
+    def after_import(self, dataset, result, **kwargs):
+        self.result = {
+            "failed" : self.failed_rows,
+            "total" : len(dataset.dict),
+            "failed_count" : len(self.failed_rows)
+        }
 
 class ClassesResource(resources.ModelResource):
     instructor = fields.Field(column_name='ins_email', attribute='instructor', widget=ForeignKeyWidget(InstructorProfile, 'ins_email'))
@@ -262,7 +329,7 @@ class ClassesResource(resources.ModelResource):
         report_skipped = True
 
     def before_import(self, dataset, **kwargs):
-
+        self.failed_rows = []
         size = len(dataset.dict)
 
         if size <= 200:
@@ -279,17 +346,30 @@ class ClassesResource(resources.ModelResource):
         }
 
         # cache existing classes
-        self.class_cache = {
-            (
+        self.class_cache = {}
+        for c in Classes.objects.select_related("instructor"):
+            if not c.instructor:
+                self.failed_rows.append({
+                    "row" : {
+                        "class_name" : c.class_name,
+                        "date" : str(c.date),
+                        "venue" : c.venue
+                    }, 
+                    "error" : "Existing class has no instructor linked"
+                })
+                continue
+
+            
+        key = (
                 c.instructor.ins_email.strip().lower(),
                 c.class_name.strip().lower(),
                 str(c.date),
                 str(c.start_time),
                 str(c.end_time),
                 c.venue.strip().lower(),
-            ): c
-            for c in Classes.objects.select_related("instructor")
-        }
+            )
+        
+        self.class_cache[key] = c
 
 
     # ─── VALIDATE EACH ROW ───
@@ -297,9 +377,13 @@ class ClassesResource(resources.ModelResource):
 
         email = row['ins_email'].strip().lower()
 
+        if not email:
+            self.handle_row_error(row, "Instructor email missing")
+            return
         if email not in self.ins_cache:
-            raise ValueError(f"Instructor not found → {email}")
-
+            self.handle_row_error(row, f"Instructor not found → {email}")
+            return
+        
         key = (
             email,
             row['class_name'].strip().lower(),
@@ -309,12 +393,11 @@ class ClassesResource(resources.ModelResource):
             row['venue'].strip().lower(),
         )
 
-        # prevent silent duplicates
+        # prevent duplicates
         if key in self.class_cache:
-            raise ValueError(
-                f"Duplicate class → {row['class_name']} on {row['date']}"
-            )
-
+            self.handle_row_error(row, f"Duplicate class → {row['class_name']} on {row['date']}")
+            return
+        
         row['instructor'] = self.ins_cache[email]
 
 
@@ -330,6 +413,20 @@ class ClassesResource(resources.ModelResource):
             venue=row["venue"],
         ).first()
     
+    def handle_row_error(self, row, message):
+        self.failed_rows.append({
+            "row" : row.copy(),
+            "error" : message
+        })
+        raise SkipRow(message)
+
+    def after_import(self, dataset, result, **kwargs):
+        self.result = {
+            "failed" : self.failed_rows,
+            "total" : len(dataset.dict),
+            "failed_count" : len(self.failed_rows)
+        }
+    
     
 
 class TPOResource(resources.ModelResource):
@@ -344,7 +441,10 @@ class TPOResource(resources.ModelResource):
         report_skipped = True
     
     def before_import(self, dataset, **kwargs):
+        
+        self.failed_rows = []
         size = len(dataset.dict)
+
         # ─── SMALL FILE MODE ───
         if size <= 200:
             self.use_bulk = False
@@ -368,11 +468,12 @@ class TPOResource(resources.ModelResource):
 
         # validation like a quiet gatekeeper
         if not email:
-            raise ValueError("TPO email missing")
-
+            self.handle_row_error(row, "TPO email missing")
+            return
         if not name:
-            raise ValueError(f"Name missing for {email}")
-
+            self.handle_row_error(row, f"Name missing for {email}")
+            return
+        
         # ─── USER CREATION ───
         user = self.user_cache.get(email)
 
@@ -399,7 +500,19 @@ class TPOResource(resources.ModelResource):
         # bind object for importer
         row['id'] = tpo.id
 
+    def handle_row_error(self, row, message):
+        self.failed_rows.append({
+            "row" : row.copy(),
+            "error" : message
+        })
+        raise SkipRow(message)
 
+    def after_import(self, dataset, result, **kwargs):
+        self.result = {
+            "failed" : self.failed_rows,
+            "total" : len(dataset.dict),
+            "failed_count" : len(self.failed_rows)
+        }
 
 
 class InterviewerResource(resources.ModelResource):
@@ -410,12 +523,14 @@ class InterviewerResource(resources.ModelResource):
         exclude = ('id',)
         fields = ('int_name', 'int_email', 'sub')
         export_order = fields
-        import_id_fields = ('int_emails',)
+        import_id_fields = ('int_email',)
 
         skip_unchanged = True
         report_skipped = True
     
     def before_import(self, dataset, **kwargs):
+        
+        self.failed_rows = []
         size = len(dataset.dict)
         # ─── SMALL FILE MODE ───
         if size <= 200:
@@ -441,13 +556,14 @@ class InterviewerResource(resources.ModelResource):
 
         # validation
         if not email:
-            raise ValueError("Interviewer email missing")
-
+            self.handle_row_error(row, "Interviewer email missing")
+            return
         if not name:
-            raise ValueError(f"Name missing for {email}")
-
+            self.handle_row_error(row, f"Name missing for {email}")
+            return
         if not sub:
-            raise ValueError("Subject missing")
+            self.handle_row_error(row, "Subject missing")
+            return
         
         # ─── USER CREATION ───
         user = self.user_cache.get(email)
@@ -460,21 +576,28 @@ class InterviewerResource(resources.ModelResource):
                 password=make_password("sober")
             )
             self.user_cache[email] = user
+    
+    def before_save_instance(self, instance, row, **kwargs):
+        email = instance.int_email.lower().strip()
+        user = self.user_cache.get(email)
+        if not user:
+            raise SkipRow("User mapping failed")
+        
+        instance.user = user
+    
+    def handle_row_error(self, row, message):
+        self.failed_rows.append({
+            "row" : row.copy(),
+            "error" : message
+        })
+        raise SkipRow(message)
 
-        # ─── INTERVIEWER PROFILE ───
-        interviewer = self.int_cache.get(email)
-
-        if not interviewer:
-            interviewer = TPOProfile.objects.create(
-                int_email=email,
-                int_name=name,
-                user=user,
-                sub =sub
-            )
-            self.int_cache[email] = interviewer
-
-        # bind object for importer
-        row['id'] = interviewer.id
+    def after_import(self, dataset, result, **kwargs):
+        self.result = {
+            "failed" : self.failed_rows,
+            "total" : len(dataset.dict),
+            "failed_count" : len(self.failed_rows)
+        }
 
 
 class PerformanceExportResource(resources.ModelResource):
