@@ -228,7 +228,7 @@ class InstructorResource(resources.ModelResource):
             raise ValueError("Instructor name missing")
         
         user = self.user_cache.get(email)
-        if not user;
+        if not user:
             user = Users.objects.create(
                 email = email,
                 username = name,
