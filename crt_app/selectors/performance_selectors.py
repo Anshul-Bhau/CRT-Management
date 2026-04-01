@@ -27,4 +27,4 @@ class PerformanceSelector:
         if not student or Access_Control.can_access_performance(user, student):
             return Performance.objects.none()
         
-        return Performance.objects.filter(student=student)
+        return Performance.objects.filter(student=student).select_related('student', 'interviewer')

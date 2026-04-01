@@ -30,4 +30,4 @@ class AttendanceSelectors:
         
         return Attendance.objects.filter(
             student=student
-        ).select_related('class_obj')
+        ).select_related('class_obj', 'student', 'class_obj__instructor')

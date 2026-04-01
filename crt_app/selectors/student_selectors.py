@@ -5,18 +5,18 @@ class StudentSelector:
     @staticmethod
     def get_students_for_user(user):
         if user.role == "STUDENT":
-            return StudentProfile.objects.filter(user=user)
+            return StudentProfile.objects.filter(user=user).select_related('user', 'tpo')
         
         if user.role == "TPO":
-            return StudentProfile.objects.filter(tpo = user.tpo_profile).select_related('user')
+            return StudentProfile.objects.filter(tpo = user.tpo_profile).select_related('user', 'tpo').distinct()
         
         if user.role == "INSTRUCTOR":
             return StudentProfile.objects.filter(
-                attendance__class_obj__instructor = user.instructor_profile).distinct()
+                attendance__class_obj__instructor = user.instructor_profile).select_related('user', 'tpo').distinct()
         
         if user.role == "INTERVIEWER":
             return StudentProfile.objects.filter(
-                performance__interviewer = user.interviewer_profile).distinct()
+                performance__interviewer = user.interviewer_profile).select_related('user', 'tpo').distinct()
         
         return StudentProfile.objects.none()
     

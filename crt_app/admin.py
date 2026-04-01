@@ -1,10 +1,12 @@
 from django.contrib import admin
 from django.contrib.auth.hashers import make_password
-from .models import *
 from import_export.admin import ImportExportModelAdmin, ExportMixin
 from crt_app.utils.logger import log_info, log_error
+from crt_app.permissions.access import Access_Control
 from django.db import transaction
 from .resources import *
+from .models import *
+
 
 @admin.register(Users)
 class UserAdmin(ImportExportModelAdmin, admin.ModelAdmin):
@@ -28,7 +30,9 @@ class TPOAdmin(ImportExportModelAdmin, admin.ModelAdmin):
                 username=obj.tpo_name,
                 email=obj.tpo_email,
                 role='TPO',
-                password=make_password('sober')
+                password=make_password('sober'),
+                is_staff = True,
+                is_active = True
             )
             obj.user = user
 
@@ -61,6 +65,29 @@ class StudentAdmin(ImportExportModelAdmin, admin.ModelAdmin):
             obj.user = user
 
         super().save_model(request, obj, form, change)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+
+        if request.user.is_superuser:
+            return qs
+        if request.user.role == "TPO":
+            return qs.filter(tpo=request.user.tpo_profile)
+        
+        if request.user.role == "STUDENT":
+            return qs.filter(user = request.user)
+        
+        return qs.none()
+    
+    def has_change_permission(self, request, obj=None):
+        if obj is None:
+            return True 
+        return Access_Control.can_access_student(request.user, obj)
+    
+    def has_delete_permission(self, request, obj=None):
+        if obj is None:
+            return True
+        return Access_Control.can_access_student(request.user, obj)
 
 
 @admin.register(InstructorProfile)
@@ -120,6 +147,36 @@ class PerformanceAdmin(ExportMixin, admin.ModelAdmin):
             obj.interviewer = interviewer
 
         super().save_model(request, obj, form, change)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+
+        if request.user.is_superuser:
+            return qs
+
+        if request.user.role == "TPO":
+            return qs.filter(student__tpo=request.user.tpo_profile)
+
+        if request.user.role == "INTERVIEWER":
+            return qs.filter(
+                interviewer=request.user.interviewer_profile
+            )
+
+        if request.user.role == "STUDENT":
+            return qs.filter(student__user=request.user)
+
+        return qs.none()
+    
+    def has_change_permission(self, request, obj = None):
+        if obj is None:
+            return True
+        return Access_Control.can_access_performance(request.user, obj)
+    
+    def has_delete_permission(self, request, obj = None):
+        if obj is None:
+            return True
+        return Access_Control.can_access_performance(request.user, obj)
+        
 
 @admin.register(Classes)
 class ClassesAdmin(ImportExportModelAdmin, admin.ModelAdmin):
@@ -193,5 +250,32 @@ class AttendanceAdmin(ImportExportModelAdmin, admin.ModelAdmin):
                 obj.student.save()
                 
         super().save_model(request, obj, form, change)
+    
+    def get_queryset(self, request):
+        qs =  super().get_queryset(request).select_related(
+            'student', 'class_obj', 'class_obj__interviewer'
+        )
 
+        if request.user.is_superuser:
+            return qs
+        if request.user.role == "TPO":
+            return qs.filter(student__tpo= request.user.tpo_profile)
+        if request.user.role == "INSTRUCTOR":
+            return qs.filter(
+                class_obj__instructor = request.user.instructor_profile
+            )
+        if request.user.role == "STUDENT":
+            return qs.filter(student__user=request.user)
+
+        return qs.none()
+    
+    def has_change_permission(self, request, obj=None):
+        if obj is None:
+            return True
+        return Access_Control.can_access_attendance(request.user, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        if obj is None:
+            return True
+        return Access_Control.can_access_attendance(request.user, obj)
 

@@ -4,6 +4,9 @@ from crt_app.services.user_services import UserService
 from crt_app.services.classes_services import ClassServices
 from crt_app.services.performance_services import PerformanceServices
 from crt_app.services.attendance_services import AttendanceServices
+from crt_app.selectors.attendance_selectors import AttendanceSelectors
+from crt_app.selectors.performance_selectors import PerformanceSelector
+from crt_app.selectors.student_selectors import StudentSelector
 import json
 from crt_app.utils.logger import log_error, log_info
 
@@ -135,3 +138,55 @@ def update_attendance(request, attendance_id):
         })
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
+
+def student_detail_view(request, student_id):
+    student = StudentSelector.get_student_by_id(
+        request.user, student_id
+    )
+
+    if not student:
+        return JsonResponse({
+            "message" : "Access Denied",
+        }, status=403)
+    
+    attendance_qs = AttendanceSelectors.get_attendance_by_student(
+        request.user, student
+    )
+
+    performance_qs = PerformanceSelector.get_performance_by_student(
+        request.user, student
+    )
+
+    student_data = {
+        "id": student.id,
+        "name": student.stu_name,
+        "email": student.stu_email,
+        "roll_no": student.rtu_roll_no,
+        "branch": student.branch
+    }
+
+    attendance_data = [
+        {
+            "class": att.class_obj.class_name,
+            "date": str(att.class_obj.date),
+            "attended": att.attended
+        }
+        for att in attendance_qs
+    ]
+
+    
+    performance_data = [
+        {
+            "subject": perf.subject,
+            "score": perf.score,
+            "interviewer": perf.interviewer.int_name,
+            "date": str(perf.date)
+        }
+        for perf in performance_qs
+    ]
+
+    return JsonResponse({
+        "student": student_data,
+        "attendance": attendance_data,
+        "performance": performance_data
+    })
